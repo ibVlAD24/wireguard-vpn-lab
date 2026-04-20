@@ -1,241 +1,172 @@
-# WireGuard VPN Lab
-
-## 📌 Описание
-Проект демонстрирует настройку WireGuard VPN-туннеля между сервером и клиентом на одной машине (тестовая среда).
-
-## 🛠️ Технологии
-- Ubuntu 22.04
-- WireGuard
-
-## 🔧 Как это работает
-
-1. Генерация ключей (приватный и публичный для сервера и клиента)
-2. Конфигурация сервера (`wg0.conf`)
-3. Конфигурация клиента (`client.conf`)
-4. Запуск интерфейсов через `wg-quick`
-5. Проверка связи через пинг
-
-## 🚀 Запуск
-
-```bash
-# Установка
-sudo apt update
-sudo apt install wireguard -y
-
-# Генерация ключей
-wg genkey | tee server_private.key | wg pubkey > server_public.key
-wg genkey | tee client_private.key | wg pubkey > client_public.key
-
-# Копирование конфигов
-sudo cp configs/wg0.conf /etc/wireguard/
-sudo cp configs/client.conf /etc/wireguard/
-
-# Запуск
-sudo wg-quick up wg0
-sudo wg-quick up client
-
-# Проверка
-ping -c 4 10.0.0.1
-ping -c 4 10.0.0.2
-
-
-
-
-
-
-
-Отлично. Сейчас сделаем **полный цикл**: подготовим папку, скопируем конфиги без ключей, сделаем скриншоты и зальём на GitHub. Всё через терминал.
-
----
-
-## 🐳 Часть 1. Подготовка папки проекта
-
-```bash
-mkdir -p ~/wireguard-vpn-lab/configs
-mkdir -p ~/wireguard-vpn-lab/screenshots
-mkdir -p ~/wireguard-vpn-lab/scripts
-cd ~/wireguard-vpn-lab
-```
-
----
-
-## 📄 Часть 2. Создаём конфиги без ключей
-
-### Конфиг сервера (без приватных данных)
-
-```bash
-nano configs/wg0.conf
-```
-
-Скопируй и вставь:
-
-```ini
-[Interface]
-PrivateKey = <your_server_private_key>
-Address = 10.0.0.1/24
-ListenPort = 51820
-SaveConfig = false
-
-[Peer]
-PublicKey = <your_client_public_key>
-AllowedIPs = 10.0.0.2/32
-```
-
-Сохрани: `Ctrl+O`, `Enter`, `Ctrl+X`
-
----
-
-### Конфиг клиента (без ключей)
-
-```bash
-nano configs/client.conf
-```
-
-Скопируй и вставь:
-
-```ini
-[Interface]
-PrivateKey = <your_client_private_key>
-Address = 10.0.0.2/24
-
-[Peer]
-PublicKey = <your_server_public_key>
-Endpoint = 127.0.0.1:51820
-AllowedIPs = 10.0.0.0/24
-PersistentKeepalive = 25
-```
-
-Сохрани.
-
----
-
-## 🔧 Часть 3. Скрипт генерации ключей (по желанию)
-
-```bash
-nano scripts/generate-keys.sh
-```
-
-Скопируй:
-
-```bash
-#!/bin/bash
-wg genkey | tee server_private.key | wg pubkey > server_public.key
-wg genkey | tee client_private.key | wg pubkey > client_public.key
-echo "Ключи сгенерированы:"
-ls -la *.key
-```
-
-Сделай исполняемым:
-
-```bash
-chmod +x scripts/generate-keys.sh
-```
-
----
-
-## 📸 Часть 4. Создаём скриншоты (через терминал)
-
-### Скриншот 1: пинг
-
-```bash
-ping -c 4 10.0.0.1 > screenshots/ping.txt
-```
-
-Или сделай скриншот окна терминала через `gnome-screenshot`:
-
-```bash
-gnome-screenshot -w -d 2 -f screenshots/ping.png
-```
-
-(Выбери окно с пингом)
-
----
-
-### Скриншот 2: статус WireGuard
-
-```bash
-sudo wg show > screenshots/wg-show.txt
-```
-
-Или скриншот:
-
-```bash
-gnome-screenshot -w -d 2 -f screenshots/wg-show.png
-```
-
----
-
-## 📝 Часть 5. Создаём README.md
-
-```bash
-nano README.md
-```
-
-Скопируй:
-
 ```markdown
 # WireGuard VPN Lab
 
-## 📌 Описание
-Проект демонстрирует настройку WireGuard VPN-туннеля между сервером и клиентом на одной машине (тестовая среда).
+## 📌 О проекте
 
-## 🛠️ Технологии
-- Ubuntu 22.04
-- WireGuard
+Проект демонстрирует настройку WireGuard VPN-туннеля в тестовой среде. Сервер и клиент подняты на одной машине, но принцип работы идентичен реальному VPN-серверу.  
+Цель — понять механизм шифрования, обмен ключами и маршрутизацию трафика через виртуальный интерфейс.
 
-## 🔧 Как это работает
+## 🛠️ Стек
 
-1. Генерация ключей (приватный и публичный для сервера и клиента)
-2. Конфигурация сервера (`wg0.conf`)
-3. Конфигурация клиента (`client.conf`)
-4. Запуск интерфейсов через `wg-quick`
-5. Проверка связи через пинг
+- **Ubuntu 22.04** (VirtualBox)
+- **WireGuard** — современный VPN-протокол
 
-## 🚀 Запуск
+## 🔐 Как это работает
+
+WireGuard создаёт зашифрованный туннель между двумя узлами (peer'ами). Каждый узел генерирует пару ключей:
+- **Приватный ключ** — секрет, хранится на устройстве
+- **Публичный ключ** — идентификатор, которым обмениваются узлы
+
+Трафик внутри туннеля шифруется, снаружи (для провайдера или злоумышленника) — нечитаемый мусор.
+
+## 🧩 Архитектура
+
+```
+[Клиент (10.0.0.2)] <--(шифрованный туннель)--> [Сервер (10.0.0.1:51820)]
+```
+
+## ⚙️ Что сделано
+
+1. Установлен WireGuard
+2. Сгенерированы ключи для сервера и клиента
+3. Написаны конфигурационные файлы:
+   - `wg0.conf` — серверная часть
+   - `client.conf` — клиентская часть
+4. Подняты виртуальные интерфейсы через `wg-quick`
+5. Проверена связь через ping между `10.0.0.1` и `10.0.0.2`
+
+## 🚀 Инструкция по запуску (для воспроизведения)
 
 ```bash
-# Установка
+# 1. Установка
 sudo apt update
 sudo apt install wireguard -y
 
-# Генерация ключей
+# 2. Генерация ключей
 wg genkey | tee server_private.key | wg pubkey > server_public.key
 wg genkey | tee client_private.key | wg pubkey > client_public.key
 
-# Копирование конфигов
+# 3. Создание конфигов (см. папку configs/)
 sudo cp configs/wg0.conf /etc/wireguard/
 sudo cp configs/client.conf /etc/wireguard/
 
-# Запуск
+# 4. Запуск
 sudo wg-quick up wg0
 sudo wg-quick up client
 
-# Проверка
+# 5. Проверка
 ping -c 4 10.0.0.1
 ping -c 4 10.0.0.2
 ```
 
 ## 📸 Результат
 
-| Пинг работает | Статус интерфейсов |
-|---------------|--------------------|
+| Пинг между узлами | Статус интерфейсов |
+|-------------------|---------------------|
 | ![ping](screenshots/ping.png) | ![wg-show](screenshots/wg-show.png) |
 
-## 📂 Структура проекта
+## 📂 Структура репозитория
 
 ```
 wireguard-vpn-lab/
-├── configs/
+├── configs/                # Конфигурационные файлы
 │   ├── wg0.conf
 │   └── client.conf
-├── screenshots/
-│   ├── ping.png (или ping.txt)
-│   └── wg-show.png (или wg-show.txt)
-├── scripts/
+├── screenshots/            # Скриншоты работы
+│   ├── ping.png
+│   └── wg-show.png
+├── scripts/                # Вспомогательные скрипты
 │   └── generate-keys.sh
 └── README.md
 ```
 
 ## 🧑‍💻 Автор
-ibVLAD24
 
+**ibVLAD24** — студент направления 10.05.03 "Информационная безопасность"
+```markdown
+# WireGuard VPN Lab
+
+## 📌 О проекте
+
+Проект демонстрирует настройку WireGuard VPN-туннеля в тестовой среде. Сервер и клиент подняты на одной машине, но принцип работы идентичен реальному VPN-серверу.  
+Цель — понять механизм шифрования, обмен ключами и маршрутизацию трафика через виртуальный интерфейс.
+
+## 🛠️ Стек
+
+- **Ubuntu 22.04** (VirtualBox)
+- **WireGuard** — современный VPN-протокол
+
+## 🔐 Как это работает
+
+WireGuard создаёт зашифрованный туннель между двумя узлами (peer'ами). Каждый узел генерирует пару ключей:
+- **Приватный ключ** — секрет, хранится на устройстве
+- **Публичный ключ** — идентификатор, которым обмениваются узлы
+
+Трафик внутри туннеля шифруется, снаружи (для провайдера или злоумышленника) — нечитаемый мусор.
+
+## 🧩 Архитектура
+
+```
+[Клиент (10.0.0.2)] <--(шифрованный туннель)--> [Сервер (10.0.0.1:51820)]
+```
+
+## ⚙️ Что сделано
+
+1. Установлен WireGuard
+2. Сгенерированы ключи для сервера и клиента
+3. Написаны конфигурационные файлы:
+   - `wg0.conf` — серверная часть
+   - `client.conf` — клиентская часть
+4. Подняты виртуальные интерфейсы через `wg-quick`
+5. Проверена связь через ping между `10.0.0.1` и `10.0.0.2`
+
+## 🚀 Инструкция по запуску (для воспроизведения)
+
+```bash
+# 1. Установка
+sudo apt update
+sudo apt install wireguard -y
+
+# 2. Генерация ключей
+wg genkey | tee server_private.key | wg pubkey > server_public.key
+wg genkey | tee client_private.key | wg pubkey > client_public.key
+
+# 3. Создание конфигов (см. папку configs/)
+sudo cp configs/wg0.conf /etc/wireguard/
+sudo cp configs/client.conf /etc/wireguard/
+
+# 4. Запуск
+sudo wg-quick up wg0
+sudo wg-quick up client
+
+# 5. Проверка
+ping -c 4 10.0.0.1
+ping -c 4 10.0.0.2
+```
+
+## 📸 Результат
+
+| Пинг между узлами | Статус интерфейсов |
+|-------------------|---------------------|
+| ![ping](screenshots/ping.png) | ![wg-show](screenshots/wg-show.png) |
+
+## 📂 Структура репозитория
+
+```
+wireguard-vpn-lab/
+├── configs/                # Конфигурационные файлы
+│   ├── wg0.conf
+│   └── client.conf
+├── screenshots/            # Скриншоты работы
+│   ├── ping.png
+│   └── wg-show.png
+├── scripts/                # Вспомогательные скрипты
+│   └── generate-keys.sh
+└── README.md
+```
+
+## 🧑‍💻 Автор
+
+**ibVLAD24** — студент направления 10.05.03 "Информационная безопасность"
+
+[![GitHub](https://img.shields.io/badge/GitHub-ibVLAD24-181717?style=flat-square&logo=github)](https://github.com/ibVLAD24)
