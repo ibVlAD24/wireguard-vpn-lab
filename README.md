@@ -1,4 +1,3 @@
-```markdown
 # WireGuard VPN Lab
 
 ## 📌 О проекте
